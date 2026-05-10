@@ -1,0 +1,967 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>成本会计可视化教学工具</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script>
+    <style>
+        .slider-container {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin: 12px 0;
+        }
+        input[type="range"] {
+            flex: 1;
+            height: 6px;
+            border-radius: 3px;
+            cursor: pointer;
+        }
+        .value-display {
+            min-width: 80px;
+            text-align: right;
+            font-weight: 600;
+            color: #2563eb;
+        }
+        .card {
+            background: white;
+            border-radius: 12px;
+            padding: 24px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+            margin-bottom: 24px;
+        }
+        .metric {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 16px;
+            border-radius: 8px;
+            text-align: center;
+        }
+        .metric-value {
+            font-size: 32px;
+            font-weight: bold;
+        }
+        .explanation-box {
+            background: #f0f9ff;
+            border-left: 4px solid #0ea5e9;
+            padding: 16px;
+            margin-top: 16px;
+            border-radius: 0 8px 8px 0;
+        }
+        .danger {
+            background: #fef2f2;
+            border-left-color: #ef4444;
+        }
+        .success {
+            background: #f0fdf4;
+            border-left-color: #22c55e;
+        }
+        .warning {
+            background: #fffbeb;
+            border-left-color: #f59e0b;
+        }
+    </style>
+</head>
+<body class="bg-gray-100 min-h-screen">
+    <div class="max-w-6xl mx-auto p-6">
+        <!-- 标题 -->
+        <div class="text-center mb-8">
+            <h1 class="text-3xl font-bold text-gray-800 mb-2">📊 成本会计可视化教学工具</h1>
+            <p class="text-gray-600">拖拽滑块，实时观察成本习性和经营杠杆的变化</p>
+        </div>
+
+        <!-- 模块1：成本习性可视化 -->
+        <div class="card">
+            <h2 class="text-xl font-bold text-gray-800 mb-4">📈 模块一：成本习性可视化</h2>
+            <p class="text-gray-600 mb-4">理解：变动成本 vs 固定成本的本质差异</p>
+            
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <!-- 参数输入区 -->
+                <div>
+                    <h3 class="font-semibold text-gray-700 mb-4">🏭 企业参数设置（以奶茶店为例）</h3>
+                    
+                    <div class="slider-container">
+                        <span class="text-gray-600 w-32">每杯变动成本</span>
+                        <input type="range" id="variableCost" min="1" max="20" value="5" step="0.5">
+                        <span class="value-display" id="variableCostValue">¥5/杯</span>
+                    </div>
+                    
+                    <div class="slider-container">
+                        <span class="text-gray-600 w-32">每月固定成本</span>
+                        <input type="range" id="fixedCost" min="1000" max="50000" value="10000" step="500">
+                        <span class="value-display" id="fixedCostValue">¥10,000/月</span>
+                    </div>
+                    
+                    <div class="slider-container">
+                        <span class="text-gray-600 w-32">产品售价</span>
+                        <input type="range" id="price" min="5" max="50" value="15" step="1">
+                        <span class="value-display" id="priceValue">¥15/杯</span>
+                    </div>
+                    
+                    <div class="slider-container">
+                        <span class="text-gray-600 w-32">当前月销量</span>
+                        <input type="range" id="volume" min="0" max="5000" value="1000" step="50">
+                        <span class="value-display" id="volumeValue">1,000杯</span>
+                    </div>
+
+                    <!-- 关键指标 -->
+                    <div class="grid grid-cols-2 gap-4 mt-6">
+                        <div class="metric">
+                            <div class="text-sm opacity-80">单位边际贡献</div>
+                            <div class="metric-value" id="unitMargin">¥10</div>
+                            <div class="text-xs opacity-70">售价 - 单位变动成本</div>
+                        </div>
+                        <div class="metric">
+                            <div class="text-sm opacity-80">盈亏平衡点</div>
+                            <div class="metric-value" id="breakEven">1,000杯</div>
+                            <div class="text-xs opacity-70">固定成本 ÷ 单位边际贡献</div>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-4 mt-4">
+                        <div class="metric" style="background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);">
+                            <div class="text-sm opacity-80">当前月利润</div>
+                            <div class="metric-value" id="currentProfit">¥0</div>
+                        </div>
+                        <div class="metric" style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);">
+                            <div class="text-sm opacity-80">边际贡献率</div>
+                            <div class="metric-value" id="marginRate">66.7%</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 图表区 -->
+                <div>
+                    <div id="costChart" style="height: 400px;"></div>
+                </div>
+            </div>
+
+            <!-- 智能解释 -->
+            <div class="explanation-box" id="costExplanation">
+                <strong>💡 成本习性解读：</strong><br>
+                当前销量正好等于盈亏平衡点，利润为0。<br>
+                <strong>核心规律：</strong>每多卖1杯，利润就增加 ¥10（单位边际贡献）。卖得越多，赚得越多！
+            </div>
+        </div>
+
+        <!-- 模块2：经营杠杆模拟器 -->
+        <div class="card">
+            <h2 class="text-xl font-bold text-gray-800 mb-4">⚖️ 模块二：经营杠杆模拟器</h2>
+            <p class="text-gray-600 mb-4">理解：为什么"销量增加10%，利润增加远远超过10%"？</p>
+            
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <!-- 参数输入区 -->
+                <div>
+                    <h3 class="font-semibold text-gray-700 mb-4">📊 调整成本结构，观察杠杆效应</h3>
+                    
+                    <div class="slider-container">
+                        <span class="text-gray-600 w-32">固定成本占比</span>
+                        <input type="range" id="leverageRatio" min="10" max="90" value="50" step="5">
+                        <span class="value-display" id="leverageRatioValue">50%</span>
+                    </div>
+                    
+                    <div class="slider-container">
+                        <span class="text-gray-600 w-32">销量变化幅度</span>
+                        <input type="range" id="salesChange" min="-50" max="50" value="10" step="5">
+                        <span class="value-display" id="salesChangeValue">+10%</span>
+                    </div>
+
+                    <!-- 杠杆对比 -->
+                    <div class="grid grid-cols-2 gap-4 mt-6">
+                        <div class="metric" style="background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);">
+                            <div class="text-sm opacity-80">经营杠杆系数</div>
+                            <div class="metric-value" id="dolValue">2.0x</div>
+                            <div class="text-xs opacity-70">DOL = 边际贡献 ÷ 利润</div>
+                        </div>
+                        <div class="metric" style="background: linear-gradient(135deg, #fa709a 0%, #fee140 100%);">
+                            <div class="text-sm opacity-80">利润变化幅度</div>
+                            <div class="metric-value" id="profitChange">+20%</div>
+                            <div class="text-xs opacity-70">销量变化 × 杠杆系数</div>
+                        </div>
+                    </div>
+
+                    <div class="mt-4 p-4 bg-gray-50 rounded-lg">
+                        <h4 class="font-semibold mb-2">🔍 杠杆放大效应演示</h4>
+                        <p id="leverageDemo" class="text-gray-700">
+                            销量增加 10% → 利润增加 20%<br>
+                            <span class="text-red-600 font-semibold">杠杆效应：利润变化是销量变化的 2 倍！</span>
+                        </p>
+                    </div>
+                </div>
+
+                <!-- 图表区 -->
+                <div>
+                    <div id="leverageChart" style="height: 400px;"></div>
+                </div>
+            </div>
+
+            <!-- 风险提示 -->
+            <div class="explanation-box warning" id="leverageExplanation">
+                <strong>⚠️ 经营杠杆解读：</strong><br>
+                当前杠杆系数 2.0，属于中等风险水平。<br>
+                <strong>双刃剑效应：</strong>销量增长时利润加速增长；但销量下滑时，利润也会加速下跌。<br>
+                <strong>教学建议：</strong>把固定成本占比拉到 80% 以上，看看杠杆系数会变成多少？再把销量调成 -20%，观察利润的崩溃式下跌！
+            </div>
+        </div>
+
+        <!-- 模块3：经典决策案例 - 亏损产品 -->
+        <div class="card">
+            <h2 class="text-xl font-bold text-gray-800 mb-4">🎯 模块三：亏损产品决策模拟器</h2>
+            <p class="text-gray-600 mb-4">反直觉案例：亏损产品为什么不能随便停产？</p>
+            
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <!-- 产品A -->
+                <div class="p-4 bg-red-50 rounded-lg border border-red-200">
+                    <h3 class="font-semibold text-red-700 mb-2">产品A（亏损）</h3>
+                    <div class="space-y-2 text-sm">
+                        <div class="flex justify-between"><span>销售收入</span><span class="font-semibold">¥10,000</span></div>
+                        <div class="flex justify-between"><span>变动成本</span><span class="font-semibold">¥7,000</span></div>
+                        <div class="flex justify-between"><span>边际贡献</span><span class="font-semibold text-green-600">¥3,000</span></div>
+                        <div class="flex justify-between"><span>分摊固定成本</span><span class="font-semibold">¥5,000</span></div>
+                        <div class="flex justify-between border-t pt-2"><span>利润</span><span class="font-semibold text-red-600">-¥2,000</span></div>
+                    </div>
+                </div>
+                
+                <!-- 产品B -->
+                <div class="p-4 bg-green-50 rounded-lg border border-green-200">
+                    <h3 class="font-semibold text-green-700 mb-2">产品B（盈利）</h3>
+                    <div class="space-y-2 text-sm">
+                        <div class="flex justify-between"><span>销售收入</span><span class="font-semibold">¥20,000</span></div>
+                        <div class="flex justify-between"><span>变动成本</span><span class="font-semibold">¥10,000</span></div>
+                        <div class="flex justify-between"><span>边际贡献</span><span class="font-semibold text-green-600">¥10,000</span></div>
+                        <div class="flex justify-between"><span>分摊固定成本</span><span class="font-semibold">¥5,000</span></div>
+                        <div class="flex justify-between border-t pt-2"><span>利润</span><span class="font-semibold text-green-600">+¥5,000</span></div>
+                    </div>
+                </div>
+                
+                <!-- 产品C -->
+                <div class="p-4 bg-blue-50 rounded-lg border border-blue-200">
+                    <h3 class="font-semibold text-blue-700 mb-2">产品C（盈利）</h3>
+                    <div class="space-y-2 text-sm">
+                        <div class="flex justify-between"><span>销售收入</span><span class="font-semibold">¥15,000</span></div>
+                        <div class="flex justify-between"><span>变动成本</span><span class="font-semibold">¥8,000</span></div>
+                        <div class="flex justify-between"><span>边际贡献</span><span class="font-semibold text-green-600">¥7,000</span></div>
+                        <div class="flex justify-between"><span>分摊固定成本</span><span class="font-semibold">¥5,000</span></div>
+                        <div class="flex justify-between border-t pt-2"><span>利润</span><span class="font-semibold text-green-600">+¥2,000</span></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 决策按钮 -->
+            <div class="flex gap-4 mt-6 justify-center">
+                <button id="btnKeep" class="px-6 py-3 bg-green-500 text-white rounded-lg font-semibold hover:bg-green-600 transition">
+                    ✅ 继续生产亏损产品
+                </button>
+                <button id="btnStop" class="px-6 py-3 bg-red-500 text-white rounded-lg font-semibold hover:bg-red-600 transition">
+                    ❌ 停产亏损产品A
+                </button>
+            </div>
+
+            <!-- 决策结果 -->
+            <div class="explanation-box mt-6" id="decisionResult">
+                <strong>👆 点击上方按钮，观察整体利润变化</strong><br>
+                提示：停产A产品后，它分摊的 ¥5,000 固定成本不会消失，而是会转嫁到B和C产品身上...
+            </div>
+        </div>
+
+        <!-- 模块4：追加订货决策 -->
+        <div class="card">
+            <h2 class="text-xl font-bold text-gray-800 mb-4">📦 模块四：追加订货决策模拟器</h2>
+            <p class="text-gray-600 mb-4">理解：为什么"低于成本价"的订单反而应该接受？</p>
+            
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <!-- 参数输入区 -->
+                <div>
+                    <h3 class="font-semibold text-gray-700 mb-4">🏭 工厂参数设置</h3>
+                    
+                    <div class="slider-container">
+                        <span class="text-gray-600 w-36">正常售价</span>
+                        <input type="range" id="normalPrice" min="50" max="200" value="100" step="5">
+                        <span class="value-display" id="normalPriceValue">¥100/件</span>
+                    </div>
+                    
+                    <div class="slider-container">
+                        <span class="text-gray-600 w-36">单位变动成本</span>
+                        <input type="range" id="unitVC" min="20" max="100" value="45" step="1">
+                        <span class="value-display" id="unitVCValue">¥45/件</span>
+                    </div>
+                    
+                    <div class="slider-container">
+                        <span class="text-gray-600 w-36">每月总固定成本</span>
+                        <input type="range" id="totalFC" min="10000" max="100000" value="30000" step="1000">
+                        <span class="value-display" id="totalFCValue">¥30,000</span>
+                    </div>
+                    
+                    <div class="slider-container">
+                        <span class="text-gray-600 w-36">月产能</span>
+                        <input type="range" id="capacity" min="500" max="2000" value="1000" step="50">
+                        <span class="value-display" id="capacityValue">1,000件</span>
+                    </div>
+                    
+                    <div class="slider-container">
+                        <span class="text-gray-600 w-36">当前正常销量</span>
+                        <input type="range" id="normalSales" min="300" max="1000" value="600" step="50">
+                        <span class="value-display" id="normalSalesValue">600件</span>
+                    </div>
+                    
+                    <div class="slider-container mt-4 border-t pt-4">
+                        <span class="text-gray-600 w-36 font-semibold text-blue-600">客户特殊订货价</span>
+                        <input type="range" id="specialPrice" min="30" max="80" value="65" step="1">
+                        <span class="value-display" id="specialPriceValue">¥65/件</span>
+                    </div>
+                    
+                    <div class="slider-container">
+                        <span class="text-gray-600 w-36 font-semibold text-blue-600">特殊订货数量</span>
+                        <input type="range" id="specialQty" min="50" max="500" value="200" step="10">
+                        <span class="value-display" id="specialQtyValue">200件</span>
+                    </div>
+                </div>
+
+                <!-- 决策分析区 -->
+                <div>
+                    <h3 class="font-semibold text-gray-700 mb-4">📊 决策分析</h3>
+                    
+                    <div class="bg-gray-50 p-4 rounded-lg mb-4">
+                        <h4 class="font-semibold mb-2">单位成本计算（迷惑你的"完全成本法"）</h4>
+                        <div class="space-y-1 text-sm">
+                            <div class="flex justify-between"><span>单位变动成本</span><span class="font-semibold">¥45</span></div>
+                            <div class="flex justify-between"><span>单位固定成本分摊</span><span class="font-semibold" id="unitFC">¥50</span></div>
+                            <div class="flex justify-between border-t pt-1 font-bold"><span>单位完全成本</span><span class="font-semibold text-red-600" id="fullCost">¥95</span></div>
+                        </div>
+                    </div>
+                    
+                    <div class="bg-blue-50 p-4 rounded-lg mb-4">
+                        <h4 class="font-semibold mb-2">💡 管理会计视角（真正的决策依据）</h4>
+                        <div class="space-y-1 text-sm">
+                            <div class="flex justify-between"><span>特殊订货单价</span><span class="font-semibold text-blue-600" id="specialPriceShow">¥65</span></div>
+                            <div class="flex justify-between"><span>- 单位变动成本</span><span class="font-semibold">-¥45</span></div>
+                            <div class="flex justify-between border-t pt-1 font-bold"><span>= 单位增量利润</span><span class="font-semibold text-green-600" id="unitIncremental">+¥20</span></div>
+                            <div class="flex justify-between mt-2 font-bold text-lg"><span>总增量利润</span><span class="text-green-600" id="totalIncremental">+¥4,000</span></div>
+                        </div>
+                    </div>
+                    
+                    <div class="explanation-box" id="orderDecision">
+                        <strong>✅ 决策结论：接受订单！</strong><br>
+                        虽然 ¥65 < ¥95（完全成本），看起来"亏了"，但固定成本已经被正常订单分摊完了。<br>
+                        接受这个订单，你实际多赚 ¥4,000！
+                    </div>
+                </div>
+            </div>
+            
+            <!-- 可视化对比 -->
+            <div class="mt-6">
+                <div id="orderChart" style="height: 300px;"></div>
+            </div>
+        </div>
+
+        <!-- 模块5：成本核算方法对比 -->
+        <div class="card">
+            <h2 class="text-xl font-bold text-gray-800 mb-4">🔄 模块五：变动成本法 vs 完全成本法</h2>
+            <p class="text-gray-600 mb-4">理解：为什么两种方法算出来的利润不一样？产量和销量的关系是关键！</p>
+            
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <!-- 参数区 -->
+                <div>
+                    <h3 class="font-semibold text-gray-700 mb-4">📊 企业数据</h3>
+                    
+                    <div class="slider-container">
+                        <span class="text-gray-600 w-28">期初存货</span>
+                        <input type="range" id="beginInventory" min="0" max="500" value="0" step="50">
+                        <span class="value-display" id="beginInventoryValue">0件</span>
+                    </div>
+                    
+                    <div class="slider-container">
+                        <span class="text-gray-600 w-28">本期产量</span>
+                        <input type="range" id="production" min="500" max="2000" value="1000" step="50">
+                        <span class="value-display" id="productionValue">1,000件</span>
+                    </div>
+                    
+                    <div class="slider-container">
+                        <span class="text-gray-600 w-28">本期销量</span>
+                        <input type="range" id="sales" min="300" max="1500" value="800" step="50">
+                        <span class="value-display" id="salesValue">800件</span>
+                    </div>
+                    
+                    <div class="slider-container">
+                        <span class="text-gray-600 w-28">单位售价</span>
+                        <input type="range" id="sellingPrice" min="50" max="200" value="100" step="5">
+                        <span class="value-display" id="sellingPriceValue">¥100/件</span>
+                    </div>
+                    
+                    <div class="slider-container">
+                        <span class="text-gray-600 w-28">单位变动成本</span>
+                        <input type="range" id="varCost" min="20" max="80" value="30" step="1">
+                        <span class="value-display" id="varCostValue">¥30/件</span>
+                    </div>
+                    
+                    <div class="slider-container">
+                        <span class="text-gray-600 w-28">期间固定成本</span>
+                        <input type="range" id="fixedCost" min="10000" max="50000" value="20000" step="1000">
+                        <span class="value-display" id="fixedCostValue">¥20,000</span>
+                    </div>
+                </div>
+
+                <!-- 变动成本法 -->
+                <div class="p-4 bg-blue-50 rounded-lg">
+                    <h3 class="font-semibold text-blue-700 mb-4 text-center">变动成本法（管理会计）</h3>
+                    <div class="space-y-2 text-sm">
+                        <div class="flex justify-between"><span>销售收入</span><span class="font-semibold" id="vcRevenue">¥80,000</span></div>
+                        <div class="flex justify-between"><span>- 变动生产成本</span><span class="font-semibold" id="vcVariableCost">-¥24,000</span></div>
+                        <div class="flex justify-between border-t pt-1"><span>= 边际贡献</span><span class="font-semibold text-blue-600" id="vcContribution">¥56,000</span></div>
+                        <div class="flex justify-between"><span>- 固定生产成本</span><span class="font-semibold">-¥20,000</span></div>
+                        <div class="flex justify-between border-t-2 border-blue-400 pt-1 font-bold">
+                            <span>= 利润</span>
+                            <span class="text-blue-600" id="vcProfit">¥36,000</span>
+                        </div>
+                    </div>
+                    <div class="mt-4 p-3 bg-blue-100 rounded text-xs">
+                        <strong>特点：</strong>固定成本全部作为期间费用扣除，不随存货结转。利润只和销量挂钩，和产量无关。
+                    </div>
+                </div>
+
+                <!-- 完全成本法 -->
+                <div class="p-4 bg-purple-50 rounded-lg">
+                    <h3 class="font-semibold text-purple-700 mb-4 text-center">完全成本法（财务会计）</h3>
+                    <div class="space-y-2 text-sm">
+                        <div class="flex justify-between"><span>销售收入</span><span class="font-semibold" id="fcRevenue">¥80,000</span></div>
+                        <div class="flex justify-between"><span>- 销售成本（含固定）</span><span class="font-semibold" id="fcCOGS">-¥40,000</span></div>
+                        <div class="flex justify-between border-t-2 border-purple-400 pt-1 font-bold">
+                            <span>= 利润</span>
+                            <span class="text-purple-600" id="fcProfit">¥40,000</span>
+                        </div>
+                    </div>
+                    <div class="mt-2 text-sm">
+                        <div class="flex justify-between"><span>期末存货数量</span><span class="font-semibold" id="endingInventory">200件</span></div>
+                        <div class="flex justify-between"><span>存货中"沉淀"的固定成本</span><span class="font-semibold text-red-600" id="deferredFC">¥4,000</span></div>
+                    </div>
+                    <div class="mt-2 p-3 bg-purple-100 rounded text-xs">
+                        <strong>特点：</strong>部分固定成本随存货"沉淀"到资产负债表，不影响当期利润。产量越高，当期利润越高。
+                    </div>
+                </div>
+            </div>
+
+            <!-- 核心差异解释 -->
+            <div class="explanation-box mt-6" id="methodDiff">
+                <strong>📊 利润差异分析：</strong><br>
+                完全成本法利润 ¥40,000 - 变动成本法利润 ¥36,000 = <span class="text-red-600 font-semibold">差异 ¥4,000</span><br>
+                <strong>差异原因：</strong>产量 > 销量，存货增加 200 件，每件存货"带走"¥20的固定成本，共 ¥4,000 的固定成本没有在当期扣除，导致利润虚高。<br>
+                <strong>核心规律：</strong>产量 > 销量 → 完全成本法利润更高；产量 < 销量 → 变动成本法利润更高；产量 = 销量 → 两者相等。
+            </div>
+
+            <!-- 趋势图 -->
+            <div class="mt-6">
+                <div id="methodChart" style="height: 300px;"></div>
+            </div>
+        </div>
+
+        <!-- 页脚 -->
+        <div class="text-center text-gray-500 text-sm mt-8">
+            <p>🎓 成本会计可视化教学工具 | 帮助老师把抽象概念讲透，帮助学生真正理解</p>
+        </div>
+    </div>
+
+    <script>
+        // ============ 模块1：成本习性可视化 ============
+        const costChart = echarts.init(document.getElementById('costChart'));
+        
+        function updateCostChart() {
+            const vc = parseFloat(document.getElementById('variableCost').value);
+            const fc = parseFloat(document.getElementById('fixedCost').value);
+            const price = parseFloat(document.getElementById('price').value);
+            const volume = parseFloat(document.getElementById('volume').value);
+            
+            // 更新显示值
+            document.getElementById('variableCostValue').textContent = `¥${vc}/杯`;
+            document.getElementById('fixedCostValue').textContent = `¥${fc.toLocaleString()}/月`;
+            document.getElementById('priceValue').textContent = `¥${price}/杯`;
+            document.getElementById('volumeValue').textContent = `${volume.toLocaleString()}杯`;
+            
+            // 计算指标
+            const unitMargin = price - vc;
+            const breakEven = Math.ceil(fc / unitMargin);
+            const profit = unitMargin * volume - fc;
+            const marginRate = (unitMargin / price * 100).toFixed(1);
+            
+            document.getElementById('unitMargin').textContent = `¥${unitMargin}`;
+            document.getElementById('breakEven').textContent = `${breakEven.toLocaleString()}杯`;
+            document.getElementById('currentProfit').textContent = profit >= 0 ? `¥${profit.toLocaleString()}` : `-¥${Math.abs(profit).toLocaleString()}`;
+            document.getElementById('marginRate').textContent = `${marginRate}%`;
+            
+            // 生成图表数据
+            const maxVolume = Math.max(breakEven * 2, volume * 1.5, 1000);
+            const volumes = [];
+            const totalCosts = [];
+            const totalRevenues = [];
+            const fixedCosts = [];
+            const variableCosts = [];
+            
+            for (let i = 0; i <= maxVolume; i += Math.ceil(maxVolume / 50)) {
+                volumes.push(i + '杯');
+                fixedCosts.push(fc);
+                variableCosts.push(vc * i);
+                totalCosts.push(fc + vc * i);
+                totalRevenues.push(price * i);
+            }
+            
+            costChart.setOption({
+                tooltip: {
+                    trigger: 'axis',
+                    formatter: function(params) {
+                        let result = params[0].axisValue + '<br/>';
+                        params.forEach(item => {
+                            result += item.marker + item.seriesName + ': ¥' + item.value.toLocaleString() + '<br/>';
+                        });
+                        return result;
+                    }
+                },
+                legend: { data: ['总收入', '总成本', '固定成本', '变动成本'] },
+                grid: { left: '3%', right: '4%', bottom: '3%', containLabel: true },
+                xAxis: { type: 'category', data: volumes, name: '销量' },
+                yAxis: { type: 'value', name: '金额 (元)', axisLabel: { formatter: '¥{value}' } },
+                series: [
+                    {
+                        name: '总收入',
+                        type: 'line',
+                        data: totalRevenues,
+                        lineStyle: { color: '#22c55e', width: 3 },
+                        itemStyle: { color: '#22c55e' },
+                        markPoint: {
+                            data: [{ coord: [breakEven, price * breakEven], value: '盈亏平衡点' }]
+                        }
+                    },
+                    {
+                        name: '总成本',
+                        type: 'line',
+                        data: totalCosts,
+                        lineStyle: { color: '#ef4444', width: 3 },
+                        itemStyle: { color: '#ef4444' }
+                    },
+                    {
+                        name: '固定成本',
+                        type: 'line',
+                        data: fixedCosts,
+                        lineStyle: { color: '#f59e0b', type: 'dashed' },
+                        itemStyle: { color: '#f59e0b' }
+                    },
+                    {
+                        name: '变动成本',
+                        type: 'line',
+                        data: variableCosts,
+                        lineStyle: { color: '#3b82f6', type: 'dashed' },
+                        itemStyle: { color: '#3b82f6' }
+                    }
+                ]
+            });
+            
+            // 更新解释
+            let explanation = '';
+            if (volume < breakEven * 0.8) {
+                explanation = `当前销量远低于盈亏平衡点，亏损严重。<br><strong>核心规律：</strong>每多卖1杯，亏损就减少 ¥${unitMargin}（单位边际贡献）。`;
+            } else if (volume < breakEven) {
+                explanation = `当前销量接近盈亏平衡点，还需多卖 ${breakEven - volume} 杯才能盈利。<br><strong>核心规律：</strong>固定成本 ¥${fc.toLocaleString()} 是必须先"填平"的门槛。`;
+            } else if (Math.abs(volume - breakEven) < 50) {
+                explanation = `当前销量正好等于盈亏平衡点，利润为0。<br><strong>核心规律：</strong>跨过这个点之后，每多卖1杯，纯利润就增加 ¥${unitMargin}！`;
+            } else {
+                explanation = `当前已盈利！超过盈亏平衡点 ${volume - breakEven} 杯。<br><strong>核心规律：</strong>每再多卖1杯，纯利润增加 ¥${unitMargin}。卖得越多，利润率越高！`;
+            }
+            
+            document.getElementById('costExplanation').innerHTML = `<strong>💡 成本习性解读：</strong><br>${explanation}`;
+        }
+        
+        // 绑定事件
+        ['variableCost', 'fixedCost', 'price', 'volume'].forEach(id => {
+            document.getElementById(id).addEventListener('input', updateCostChart);
+        });
+        
+        // ============ 模块2：经营杠杆模拟器 ============
+        const leverageChart = echarts.init(document.getElementById('leverageChart'));
+        
+        function updateLeverageChart() {
+            const ratio = parseFloat(document.getElementById('leverageRatio').value);
+            const salesChange = parseFloat(document.getElementById('salesChange').value);
+            
+            document.getElementById('leverageRatioValue').textContent = `${ratio}%`;
+            document.getElementById('salesChangeValue').textContent = `${salesChange >= 0 ? '+' : ''}${salesChange}%`;
+            
+            // 假设计算：基准销售额 100万，利润 20万
+            const baseSales = 100;
+            const baseProfit = 20;
+            const totalCost = baseSales - baseProfit;
+            const fc = totalCost * ratio / 100;
+            const vc = totalCost * (100 - ratio) / 100;
+            
+            // 计算经营杠杆系数 DOL
+            const contributionMargin = baseSales - vc;
+            const dol = (contributionMargin / baseProfit).toFixed(2);
+            const profitChange = (salesChange * dol).toFixed(1);
+            
+            document.getElementById('dolValue').textContent = `${dol}x`;
+            document.getElementById('profitChange').textContent = `${profitChange >= 0 ? '+' : ''}${profitChange}%`;
+            
+            // 更新演示文字
+            document.getElementById('leverageDemo').innerHTML = `
+                销量 ${salesChange >= 0 ? '增加' : '减少'} ${Math.abs(salesChange)}% → 
+                利润 ${profitChange >= 0 ? '增加' : '减少'} ${Math.abs(profitChange)}%<br>
+                <span class="text-red-600 font-semibold">杠杆效应：利润变化是销量变化的 ${dol} 倍！</span>
+            `;
+            
+            // 生成图表数据：不同销量变化下的利润变化
+            const salesChanges = [];
+            const profitChanges = [];
+            
+            for (let i = -50; i <= 50; i += 5) {
+                salesChanges.push(i + '%');
+                profitChanges.push((i * dol).toFixed(1));
+            }
+            
+            leverageChart.setOption({
+                tooltip: {
+                    trigger: 'axis',
+                    formatter: function(params) {
+                        return `销量变化: ${params[0].axisValue}<br/>利润变化: ${params[0].value}%`;
+                    }
+                },
+                grid: { left: '3%', right: '4%', bottom: '3%', containLabel: true },
+                xAxis: { type: 'category', data: salesChanges, name: '销量变化' },
+                yAxis: { type: 'value', name: '利润变化 (%)' },
+                series: [{
+                    name: '利润变化',
+                    type: 'line',
+                    data: profitChanges,
+                    lineStyle: { color: '#8b5cf6', width: 3 },
+                    itemStyle: { color: '#8b5cf6' },
+                    markLine: {
+                        data: [
+                            { yAxis: 0, lineStyle: { color: '#666' } },
+                            { coord: [salesChanges.indexOf(salesChange + '%'), profitChange], value: `DOL=${dol}` }
+                        ]
+                    }
+                }]
+            });
+            
+            // 更新杠杆解释
+            let riskLevel = '';
+            let riskColor = '';
+            if (dol < 2) {
+                riskLevel = '低风险，经营稳健';
+                riskColor = 'success';
+            } else if (dol < 4) {
+                riskLevel = '中等风险，需关注销量波动';
+                riskColor = 'warning';
+            } else {
+                riskLevel = '高风险！销量稍有下滑利润就会崩溃式下跌';
+                riskColor = 'danger';
+            }
+            
+            document.getElementById('leverageExplanation').className = `explanation-box ${riskColor}`;
+            document.getElementById('leverageExplanation').innerHTML = `
+                <strong>⚠️ 经营杠杆解读：</strong><br>
+                当前杠杆系数 ${dol}，${riskLevel}<br>
+                <strong>双刃剑效应：</strong>固定成本占比越高，杠杆效应越强——增长时利润暴涨，下滑时利润暴跌。<br>
+                <strong>教学建议：</strong>把固定成本占比拉到 80% 以上，看看杠杆系数会变成多少？再把销量调成 -20%，观察利润的崩溃式下跌！
+            `;
+        }
+        
+        ['leverageRatio', 'salesChange'].forEach(id => {
+            document.getElementById(id).addEventListener('input', updateLeverageChart);
+        });
+        
+        // ============ 模块3：亏损产品决策 ============
+        function showDecision(stopProduction) {
+            const resultBox = document.getElementById('decisionResult');
+            
+            if (stopProduction) {
+                // 停产情况：产品A的固定成本5000分摊到B和C
+                // 产品B利润：5000 - 2500 = 2500
+                // 产品C利润：2000 - 2500 = -500
+                // 总利润：2000
+                resultBox.className = 'explanation-box danger';
+                resultBox.innerHTML = `
+                    <strong>❌ 停产结果：整体利润从 ¥5,000 下降到 ¥2,000！</strong><br><br>
+                    <strong>为什么反而少赚了 ¥3,000？</strong><br>
+                    因为产品A虽然"亏损" ¥2,000，但它贡献了 ¥3,000 的边际贡献来帮着分摊固定成本。<br>
+                    停产后，产品A分摊的 ¥5,000 固定成本不会凭空消失，而是转嫁到了B和C身上！<br><br>
+                    <strong>核心结论：</strong><br>
+                    只要产品还有正的边际贡献，就不该停产。它在帮你"背"固定成本！<br>
+                    <span class="text-red-600 font-semibold">会计利润 ≠ 决策依据。边际贡献才是！</span>
+                `;
+            } else {
+                // 继续生产情况
+                resultBox.className = 'explanation-box success';
+                resultBox.innerHTML = `
+                    <strong>✅ 继续生产结果：整体利润保持 ¥5,000</strong><br><br>
+                    <strong>表面亏损的产品A，实际上在默默做贡献！</strong><br>
+                    产品A虽然会计利润是 -¥2,000，但它带来了 ¥3,000 的边际贡献。<br>
+                    如果没有它，这 ¥5,000 的固定成本就要全靠B和C来背。<br><br>
+                    <strong>核心结论：</strong><br>
+                    做决策时，要看"增量利润"而不是"会计利润"。固定成本是沉没成本，不影响决策！<br>
+                    <span class="text-green-600 font-semibold">这就是管理会计和财务会计的思维差异。</span>
+                `;
+            }
+        }
+        
+        document.getElementById('btnStop').addEventListener('click', () => showDecision(true));
+        document.getElementById('btnKeep').addEventListener('click', () => showDecision(false));
+        
+        // ============ 模块4：追加订货决策 ============
+        const orderChart = echarts.init(document.getElementById('orderChart'));
+        
+        function updateOrderDecision() {
+            const normalPrice = parseFloat(document.getElementById('normalPrice').value);
+            const unitVC = parseFloat(document.getElementById('unitVC').value);
+            const totalFC = parseFloat(document.getElementById('totalFC').value);
+            const capacity = parseFloat(document.getElementById('capacity').value);
+            const normalSales = parseFloat(document.getElementById('normalSales').value);
+            const specialPrice = parseFloat(document.getElementById('specialPrice').value);
+            const specialQty = parseFloat(document.getElementById('specialQty').value);
+            
+            // 更新显示值
+            document.getElementById('normalPriceValue').textContent = `¥${normalPrice}/件`;
+            document.getElementById('unitVCValue').textContent = `¥${unitVC}/件`;
+            document.getElementById('totalFCValue').textContent = `¥${totalFC.toLocaleString()}`;
+            document.getElementById('capacityValue').textContent = `${capacity.toLocaleString()}件`;
+            document.getElementById('normalSalesValue').textContent = `${normalSales.toLocaleString()}件`;
+            document.getElementById('specialPriceValue').textContent = `¥${specialPrice}/件`;
+            document.getElementById('specialQtyValue').textContent = `${specialQty.toLocaleString()}件`;
+            
+            // 计算单位固定成本（按产能分摊）
+            const unitFC = totalFC / capacity;
+            const fullCost = unitVC + unitFC;
+            
+            document.getElementById('unitFC').textContent = `¥${unitFC.toFixed(1)}`;
+            document.getElementById('fullCost').textContent = `¥${fullCost.toFixed(1)}`;
+            
+            // 增量利润计算
+            document.getElementById('specialPriceShow').textContent = `¥${specialPrice}`;
+            const unitIncremental = specialPrice - unitVC;
+            document.getElementById('unitIncremental').textContent = unitIncremental >= 0 ? `+¥${unitIncremental.toFixed(1)}` : `-¥${Math.abs(unitIncremental).toFixed(1)}`;
+            
+            const totalIncremental = unitIncremental * specialQty;
+            document.getElementById('totalIncremental').textContent = totalIncremental >= 0 ? `+¥${totalIncremental.toLocaleString()}` : `-¥${Math.abs(totalIncremental).toLocaleString()}`;
+            
+            // 剩余产能检查
+            const remainingCapacity = capacity - normalSales;
+            const hasEnoughCapacity = specialQty <= remainingCapacity;
+            
+            // 决策结论
+            const decisionBox = document.getElementById('orderDecision');
+            if (!hasEnoughCapacity) {
+                decisionBox.className = 'explanation-box danger';
+                decisionBox.innerHTML = `
+                    <strong>⚠️ 产能不足，需要谨慎决策！</strong><br>
+                    剩余产能只有 ${remainingCapacity} 件，需要挤出 ${specialQty - remainingCapacity} 件正常订单的产能。<br>
+                    需要额外计算：挤压正常订单损失的利润是否小于特殊订单带来的增量利润？
+                `;
+            } else if (unitIncremental > 0) {
+                decisionBox.className = 'explanation-box success';
+                decisionBox.innerHTML = `
+                    <strong>✅ 决策结论：接受订单！</strong><br>
+                    虽然 ¥${specialPrice} < ¥${fullCost.toFixed(1)}（完全成本），看起来"亏了"，但固定成本已经被正常订单分摊完了。<br>
+                    <strong>接受这个订单，你实际多赚 ¥${totalIncremental.toLocaleString()}！</strong><br>
+                    <span class="text-green-600 font-semibold">核心：沉没成本不影响决策，只看增量收入和增量成本。</span>
+                `;
+            } else {
+                decisionBox.className = 'explanation-box danger';
+                decisionBox.innerHTML = `
+                    <strong>❌ 决策结论：拒绝订单！</strong><br>
+                    特殊订货价 ¥${specialPrice} 甚至低于单位变动成本 ¥${unitVC}，每卖一件亏 ¥${Math.abs(unitIncremental).toFixed(1)}。<br>
+                    这种订单接得越多亏得越多，除非有战略考虑（比如抢占市场），否则应该拒绝。
+                `;
+            }
+            
+            // 更新图表
+            const categories = ['正常订单', '特殊订单'];
+            const incomeData = [normalSales * normalPrice, specialQty * specialPrice];
+            const variableCostData = [normalSales * unitVC, specialQty * unitVC];
+            const fixedCostData = [totalFC, 0];
+            
+            orderChart.setOption({
+                tooltip: {
+                    trigger: 'axis',
+                    axisPointer: { type: 'shadow' }
+                },
+                legend: { data: ['收入', '变动成本', '固定成本'] },
+                grid: { left: '3%', right: '4%', bottom: '3%', containLabel: true },
+                xAxis: { type: 'category', data: categories },
+                yAxis: { type: 'value', name: '金额 (元)' },
+                series: [
+                    {
+                        name: '收入',
+                        type: 'bar',
+                        stack: 'income',
+                        data: incomeData,
+                        itemStyle: { color: '#22c55e' }
+                    },
+                    {
+                        name: '变动成本',
+                        type: 'bar',
+                        stack: 'cost',
+                        data: variableCostData,
+                        itemStyle: { color: '#3b82f6' }
+                    },
+                    {
+                        name: '固定成本',
+                        type: 'bar',
+                        stack: 'cost',
+                        data: fixedCostData,
+                        itemStyle: { color: '#f59e0b' }
+                    }
+                ]
+            });
+        }
+        
+        ['normalPrice', 'unitVC', 'totalFC', 'capacity', 'normalSales', 'specialPrice', 'specialQty'].forEach(id => {
+            document.getElementById(id).addEventListener('input', updateOrderDecision);
+        });
+        
+        // ============ 模块5：成本核算方法对比 ============
+        const methodChart = echarts.init(document.getElementById('methodChart'));
+        
+        function updateMethodComparison() {
+            const beginInventory = parseFloat(document.getElementById('beginInventory').value);
+            const production = parseFloat(document.getElementById('production').value);
+            const sales = parseFloat(document.getElementById('sales').value);
+            const sellingPrice = parseFloat(document.getElementById('sellingPrice').value);
+            const varCost = parseFloat(document.getElementById('varCost').value);
+            const fixedCost = parseFloat(document.getElementById('fixedCost').value);
+            
+            // 更新显示值
+            document.getElementById('beginInventoryValue').textContent = `${beginInventory}件`;
+            document.getElementById('productionValue').textContent = `${production.toLocaleString()}件`;
+            document.getElementById('salesValue').textContent = `${sales.toLocaleString()}件`;
+            document.getElementById('sellingPriceValue').textContent = `¥${sellingPrice}/件`;
+            document.getElementById('varCostValue').textContent = `¥${varCost}/件`;
+            document.getElementById('fixedCostValue').textContent = `¥${fixedCost.toLocaleString()}`;
+            
+            // 计算期末存货
+            const endingInventory = beginInventory + production - sales;
+            document.getElementById('endingInventory').textContent = `${endingInventory}件`;
+            
+            // 收入
+            const revenue = sales * sellingPrice;
+            
+            // ========== 变动成本法 ==========
+            const vcVariableCost = sales * varCost;
+            const vcContribution = revenue - vcVariableCost;
+            const vcProfit = vcContribution - fixedCost;
+            
+            document.getElementById('vcRevenue').textContent = `¥${revenue.toLocaleString()}`;
+            document.getElementById('vcVariableCost').textContent = `-¥${vcVariableCost.toLocaleString()}`;
+            document.getElementById('vcContribution').textContent = `¥${vcContribution.toLocaleString()}`;
+            document.getElementById('vcProfit').textContent = `¥${vcProfit.toLocaleString()}`;
+            
+            // ========== 完全成本法 ==========
+            const unitFixedCost = fixedCost / production; // 单位产品分摊的固定成本
+            const unitFullCost = varCost + unitFixedCost;
+            const fcCOGS = sales * unitFullCost;
+            const fcProfit = revenue - fcCOGS;
+            
+            document.getElementById('fcRevenue').textContent = `¥${revenue.toLocaleString()}`;
+            document.getElementById('fcCOGS').textContent = `-¥${fcCOGS.toLocaleString()}`;
+            document.getElementById('fcProfit').textContent = `¥${fcProfit.toLocaleString()}`;
+            
+            // 存货中沉淀的固定成本
+            const deferredFC = endingInventory * unitFixedCost;
+            document.getElementById('deferredFC').textContent = `¥${deferredFC.toLocaleString()}`;
+            
+            // 差异解释
+            const diffBox = document.getElementById('methodDiff');
+            const profitDiff = fcProfit - vcProfit;
+            
+            let diffExplanation = '';
+            if (production > sales) {
+                diffExplanation = `
+                    <strong>📊 利润差异分析：</strong><br>
+                    完全成本法利润 ¥${fcProfit.toLocaleString()} - 变动成本法利润 ¥${vcProfit.toLocaleString()} = <span class="text-red-600 font-semibold">差异 +¥${profitDiff.toLocaleString()}</span><br>
+                    <strong>差异原因：</strong>产量 > 销量，存货增加 ${endingInventory} 件，每件存货"带走"¥${unitFixedCost.toFixed(1)}的固定成本，共 ¥${deferredFC.toLocaleString()} 的固定成本没有在当期扣除，导致利润虚高。<br>
+                    <strong>核心规律：</strong>产量 > 销量 → 完全成本法利润更高；产量 < 销量 → 变动成本法利润更高；产量 = 销量 → 两者相等。
+                `;
+            } else if (production < sales) {
+                diffExplanation = `
+                    <strong>📊 利润差异分析：</strong><br>
+                    完全成本法利润 ¥${fcProfit.toLocaleString()} - 变动成本法利润 ¥${vcProfit.toLocaleString()} = <span class="text-green-600 font-semibold">差异 -¥${Math.abs(profitDiff).toLocaleString()}</span><br>
+                    <strong>差异原因：</strong>产量 < 销量，在消化期初存货，以前期间"沉淀"在存货里的固定成本在本期释放出来扣除，导致完全成本法利润更低。<br>
+                    <strong>核心规律：</strong>产量 > 销量 → 完全成本法利润更高；产量 < 销量 → 变动成本法利润更高；产量 = 销量 → 两者相等。
+                `;
+            } else {
+                diffExplanation = `
+                    <strong>📊 利润差异分析：</strong><br>
+                    完全成本法利润 = 变动成本法利润 = ¥${vcProfit.toLocaleString()}<br>
+                    <strong>差异原因：</strong>产量 = 销量，存货没有变化，固定成本扣除金额一致。<br>
+                    <strong>核心规律：</strong>产量 = 销量 → 两种方法利润相等！
+                `;
+            }
+            
+            diffBox.innerHTML = diffExplanation;
+            
+            // 更新趋势图：不同产量下的利润对比
+            const productionLevels = [];
+            const vcProfits = [];
+            const fcProfits = [];
+            
+            for (let p = Math.max(sales * 0.5, 300); p <= sales * 1.5; p += 50) {
+                productionLevels.push(p + '件');
+                vcProfits.push(vcProfit); // 变动成本法利润和产量无关
+                
+                const ufc = fixedCost / p;
+                const fcogs = sales * (varCost + ufc);
+                fcProfits.push(revenue - fcogs);
+            }
+            
+            methodChart.setOption({
+                title: { text: '不同产量下的利润对比（销量不变）', left: 'center', textStyle: { fontSize: 14 } },
+                tooltip: {
+                    trigger: 'axis',
+                    formatter: function(params) {
+                        let result = `产量: ${params[0].axisValue}<br/>`;
+                        params.forEach(item => {
+                            result += item.marker + item.seriesName + `: ¥${item.value.toLocaleString()}<br/>`;
+                        });
+                        return result;
+                    }
+                },
+                legend: { data: ['变动成本法利润', '完全成本法利润'], bottom: 0 },
+                grid: { left: '3%', right: '4%', bottom: '15%', containLabel: true },
+                xAxis: { type: 'category', data: productionLevels, name: '产量', axisLabel: { rotate: 45 } },
+                yAxis: { type: 'value', name: '利润 (元)' },
+                series: [
+                    {
+                        name: '变动成本法利润',
+                        type: 'line',
+                        data: vcProfits,
+                        lineStyle: { color: '#3b82f6', width: 3 },
+                        itemStyle: { color: '#3b82f6' }
+                    },
+                    {
+                        name: '完全成本法利润',
+                        type: 'line',
+                        data: fcProfits,
+                        lineStyle: { color: '#8b5cf6', width: 3 },
+                        itemStyle: { color: '#8b5cf6' }
+                    }
+                ]
+            });
+        }
+        
+        ['beginInventory', 'production', 'sales', 'sellingPrice', 'varCost', 'fixedCost'].forEach(id => {
+            document.getElementById(id).addEventListener('input', updateMethodComparison);
+        });
+        
+        // ============ 初始化 ============
+        updateCostChart();
+        updateLeverageChart();
+        updateOrderDecision();
+        updateMethodComparison();
+        
+        // 响应式
+        window.addEventListener('resize', function() {
+            costChart.resize();
+            leverageChart.resize();
+            orderChart.resize();
+            methodChart.resize();
+        });
+    </script>
+</body>
+</html>
